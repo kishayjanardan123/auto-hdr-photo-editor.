@@ -1,0 +1,176 @@
+<!DOCTYPE html><html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auto HDR Photo Editor</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google AdSense -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXX"
+     crossorigin="anonymous"></script>
+  <style>
+    body {
+      background-image: url('https://www.transparenttextures.com/patterns/cubes.png');
+    }
+  </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-screen flex items-center justify-center px-4">  <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md space-y-6">
+    <div class="flex justify-between items-center">
+      <h1 class="text-2xl font-bold text-center text-gray-800 dark:text-white w-full">Auto HDR Photo Editor</h1>
+      <button id="toggleDark" class="ml-4 bg-gray-300 dark:bg-gray-700 text-gray-900 dark:text-white px-2 py-1 rounded">
+        🌓
+      </button>
+    </div><!-- AdSense Banner -->
+<div class="flex justify-center">
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-XXXXXXXXXXXX"
+       data-ad-slot="1234567890"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>
+       (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+</div>
+
+<!-- Upload -->
+<div>
+  <label class="block text-sm font-medium mb-1">Upload Your Photo</label>
+  <input type="file" id="photoUpload" accept="image/*" class="w-full border rounded p-2 bg-white dark:bg-gray-700" />
+</div>
+
+<!-- Aspect Ratio -->
+<div>
+  <label class="block text-sm font-medium mb-1">Select Aspect Ratio</label>
+  <select id="aspectRatio" class="w-full border rounded p-2 bg-white dark:bg-gray-700">
+    <option value="original">Original</option>
+    <option value="1:1">1:1 (Square)</option>
+    <option value="4:5">4:5 (Instagram)</option>
+    <option value="16:9">16:9 (Wide)</option>
+  </select>
+</div>
+
+<!-- Filters -->
+<div>
+  <label class="block text-sm font-medium mb-1">Select Filter</label>
+  <select id="filterType" class="w-full border rounded p-2 bg-white dark:bg-gray-700">
+    <option value="none">None</option>
+    <option value="contrast">High Contrast</option>
+    <option value="brightness">Brighten</option>
+    <option value="saturation">High Saturation</option>
+    <option value="grayscale">Grayscale</option>
+  </select>
+</div>
+
+<!-- Done Button -->
+<button
+  onclick="processHDR()"
+  class="w-full bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition">
+  Done
+</button>
+
+<!-- Output (Preview & Download) -->
+<div id="output" class="mt-4 hidden">
+  <p class="text-sm mb-2">Preview:</p>
+  <img id="previewImage" class="rounded border mb-2" />
+  <button id="downloadBtn" class="w-full bg-green-600 text-white font-semibold py-2 rounded hover:bg-green-700 transition">
+    Download Image
+  </button>
+</div>
+
+  </div>  <script>
+    function processHDR() {
+      const fileInput = document.getElementById('photoUpload');
+      const aspect = document.getElementById('aspectRatio').value;
+      const filter = document.getElementById('filterType').value;
+      const output = document.getElementById('output');
+      const previewImage = document.getElementById('previewImage');
+
+      if (!fileInput.files.length) {
+        alert("Please upload a photo first.");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          let [w, h] = [img.width, img.height];
+
+          if (aspect !== 'original') {
+            const [aW, aH] = aspect.split(':').map(Number);
+            const targetRatio = aW / aH;
+            if (w / h > targetRatio) {
+              w = h * targetRatio;
+            } else {
+              h = w / targetRatio;
+            }
+          }
+
+          canvas.width = w;
+          canvas.height = h;
+
+          ctx.drawImage(img, 0, 0, w, h);
+
+          let imageData = ctx.getImageData(0, 0, w, h);
+          let data = imageData.data;
+
+          for (let i = 0; i < data.length; i += 4) {
+            if (filter === 'brightness') {
+              data[i] += 40;
+              data[i + 1] += 40;
+              data[i + 2] += 40;
+            }
+            if (filter === 'contrast') {
+              const contrast = 1.4;
+              data[i] = truncate((data[i] - 128) * contrast + 128);
+              data[i + 1] = truncate((data[i + 1] - 128) * contrast + 128);
+              data[i + 2] = truncate((data[i + 2] - 128) * contrast + 128);
+            }
+            if (filter === 'saturation') {
+              const r = data[i], g = data[i + 1], b = data[i + 2];
+              const avg = (r + g + b) / 3;
+              data[i] = truncate(r + (r - avg) * 0.5);
+              data[i + 1] = truncate(g + (g - avg) * 0.5);
+              data[i + 2] = truncate(b + (b - avg) * 0.5);
+            }
+            if (filter === 'grayscale') {
+              const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+              data[i] = data[i + 1] = data[i + 2] = avg;
+            }
+          }
+
+          ctx.putImageData(imageData, 0, 0);
+
+          const imageURL = canvas.toDataURL();
+          previewImage.src = imageURL;
+          document.getElementById('downloadBtn').onclick = function() {
+            const a = document.createElement('a');
+            a.href = imageURL;
+            a.download = 'hdr-photo.png';
+            a.click();
+          };
+
+          output.classList.remove('hidden');
+        };
+        img.src = e.target.result;
+      };
+
+      reader.readAsDataURL(file);
+
+      function truncate(value) {
+        return Math.min(255, Math.max(0, value));
+      }
+    }
+
+    // Dark mode toggle
+    const toggleDark = document.getElementById('toggleDark');
+    toggleDark.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
+  </script></body>
+</html>
